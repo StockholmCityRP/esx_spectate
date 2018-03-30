@@ -1,9 +1,21 @@
+local Keys = {
+  ["ESC"] = 322, ["F1"] = 288, ["F2"] = 289, ["F3"] = 170, ["F5"] = 166, ["F6"] = 167, ["F7"] = 168, ["F8"] = 169, ["F9"] = 56, ["F10"] = 57,
+  ["~"] = 243, ["1"] = 157, ["2"] = 158, ["3"] = 160, ["4"] = 164, ["5"] = 165, ["6"] = 159, ["7"] = 161, ["8"] = 162, ["9"] = 163, ["-"] = 84, ["="] = 83, ["BACKSPACE"] = 177,
+  ["TAB"] = 37, ["Q"] = 44, ["W"] = 32, ["E"] = 38, ["R"] = 45, ["T"] = 245, ["Y"] = 246, ["U"] = 303, ["P"] = 199, ["["] = 39, ["]"] = 40, ["ENTER"] = 18,
+  ["CAPS"] = 137, ["A"] = 34, ["S"] = 8, ["D"] = 9, ["F"] = 23, ["G"] = 47, ["H"] = 74, ["K"] = 311, ["L"] = 182,
+  ["LEFTSHIFT"] = 21, ["Z"] = 20, ["X"] = 73, ["C"] = 26, ["V"] = 0, ["B"] = 29, ["N"] = 249, ["M"] = 244, [","] = 82, ["."] = 81,
+  ["LEFTCTRL"] = 36, ["LEFTALT"] = 19, ["SPACE"] = 22, ["RIGHTCTRL"] = 70,
+  ["HOME"] = 213, ["PAGEUP"] = 10, ["PAGEDOWN"] = 11, ["DELETE"] = 178,
+  ["LEFT"] = 174, ["RIGHT"] = 175, ["TOP"] = 27, ["DOWN"] = 173,
+  ["NENTER"] = 201, ["N4"] = 108, ["N5"] = 60, ["N6"] = 107, ["N+"] = 96, ["N-"] = 97, ["N7"] = 117, ["N8"] = 61, ["N9"] = 118
+}
+
 ESX = nil
 
 Citizen.CreateThread(function()
 	while ESX == nil do
-	TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
-	Wait(0)
+		TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
+		Wait(0)
 	end
 end)
 
@@ -32,42 +44,31 @@ function polar3DToWorld3D(entityPosition, radius, polarAngleDeg, azimuthAngleDeg
 	return pos
 end
 
-function spectate(target)
+RegisterNetEvent("esx_spectate:spectatePlayer")
+AddEventHandler("esx_spectate:spectatePlayer", function(target)
+	showHelpNotification('Press ~INPUT_CONTEXT~ to return, use ~INPUT_CELLPHONE_UP~ and ~INPUT_CELLPHONE_DOWN~ to zoom')
+	
+	if not InSpectatorMode then
+		LastPosition = GetEntityCoords(GetPlayerPed(-1))
+	end
 
-	ESX.TriggerServerCallback('esx:getPlayerData', function(player)
-		if not InSpectatorMode then
-			LastPosition = GetEntityCoords(GetPlayerPed(-1))
+	local playerPed = GetPlayerPed(-1)
+
+	SetEntityCollision(playerPed, false, false)
+	SetEntityVisible(playerPed, false)
+
+	Citizen.CreateThread(function()
+		if not DoesCamExist(cam) then
+			cam = CreateCam('DEFAULT_SCRIPTED_CAMERA', true)
 		end
 
-		local playerPed = GetPlayerPed(-1)
+		SetCamActive(cam, true)
+		RenderScriptCams(true, false, 0, true, true)
 
-		SetEntityCollision(playerPed, false, false)
-		SetEntityVisible(playerPed, false)
-
-		PlayerData = player
-		if ShowInfos then
-			SendNUIMessage({
-				type = 'infos',
-				data = PlayerData
-			})	
-		end
-
-		Citizen.CreateThread(function()
-
-			if not DoesCamExist(cam) then
-				cam = CreateCam('DEFAULT_SCRIPTED_CAMERA', true)
-			end
-
-			SetCamActive(cam, true)
-			RenderScriptCams(true, false, 0, true, true)
-
-			InSpectatorMode = true
-			TargetSpectate  = target
-
-		end)
-	end, target)
-
-end
+		InSpectatorMode = true
+		TargetSpectate  = target
+	end)
+end)
 
 function resetNormalCamera()
 	InSpectatorMode = false
@@ -79,85 +80,16 @@ function resetNormalCamera()
 
 	SetEntityCollision(playerPed, true, true)
 	SetEntityVisible(playerPed, true)
-	SetEntityCoords(playerPed, LastPosition.x, LastPosition.y, LastPosition.z)
+	
+	Citizen.Wait(100)
+	SetEntityCoords(playerPed, LastPosition)
 end
 
-function getPlayersList()
-
-	local players = ESX.Game.GetPlayers()
-	local data = {}
-
-	for i=1, #players, 1 do
-
-		local _data = {
-			id = GetPlayerServerId(players[i]),
-			name = GetPlayerName(players[i])
-		}
-		table.insert(data, _data)
-	end
-
-	return data
-end
 
 Citizen.CreateThread(function()
 	while true do
-		Wait(0)
-		
-		if IsControlJustReleased(1, 163) then
-			print('triggered')
-			if group ~= "user" then
-				TriggerEvent('esx_spectate:spectate')
-			end
-		end
-	end
-end)
 
-RegisterNetEvent('es_admin:setGroup')
-AddEventHandler('es_admin:setGroup', function(g)
-	print('group setted ' .. g)
-	group = g
-end)
-
-RegisterNetEvent('esx_spectate:spectate')
-AddEventHandler('esx_spectate:spectate', function()
-
-	SetNuiFocus(true, true)
-
-	SendNUIMessage({
-		type = 'show',
-		data = getPlayersList(),
-		player = GetPlayerServerId(PlayerId())
-	})
-
-end)
-
-RegisterNUICallback('select', function(data, cb)
-	print("select UI " .. json.encode(data))
-	spectate(data.id)
-	SetNuiFocus(false)
-end)
-
-RegisterNUICallback('close', function(data, cb)
-	print("closing UI")
-	SetNuiFocus(false)
-end)
-
-RegisterNUICallback('quit', function(data, cb)
-	SetNuiFocus(false)
-	resetNormalCamera()
-end)
-
-RegisterNUICallback('kick', function(data, cb)
-	SetNuiFocus(false)
-	TriggerServerEvent('esx_spectate:kick', data.id, data.reason)
-	TriggerEvent('esx_spectate:spectate')
-end)
-
-Citizen.CreateThread(function()
-
-  	while true do
-
-		Wait(0)
+		Citizen.Wait(10)
 
 		if InSpectatorMode then
 
@@ -173,14 +105,14 @@ Citizen.CreateThread(function()
 				end
 			end
 
-			if IsControlPressed(2, 241) then
-				radius = radius + 2.0;
+			if IsControlPressed(0, Keys['TOP']) then
+				radius = radius + 0.5;
 			end
 
-			if IsControlPressed(2, 242) then
-				radius = radius - 2.0;
+			if IsControlPressed(0, Keys['DOWN']) then
+				radius = radius - 0.5;
 			end
-
+			
 			if radius > -1 then
 				radius = -1
 			end
@@ -206,7 +138,19 @@ Citizen.CreateThread(function()
 			PointCamAtEntity(cam,  targetPed)
 			SetEntityCoords(playerPed,  coords.x, coords.y, coords.z + 10)
 
+			
+			if IsControlPressed(0, Keys["E"]) then
+				resetNormalCamera()
+			end
+		else
+			Citizen.Wait(3000)
 		end
 
-  	end
+	end
 end)
+
+function showHelpNotification(text)
+	BeginTextCommandDisplayHelp("STRING")
+	AddTextComponentSubstringPlayerName(text)
+	EndTextCommandDisplayHelp(0, 0, 1, -1)
+end
