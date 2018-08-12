@@ -22,13 +22,10 @@ end)
 local InSpectatorMode	= false
 local TargetSpectate	= nil
 local LastPosition		= nil
-local polarAngleDeg		= 0;
-local azimuthAngleDeg	= 90;
-local radius			= -3.5;
+local polarAngleDeg		= 0
+local azimuthAngleDeg	= 90
+local radius			= -3.5
 local cam 				= nil
-local PlayerDate		= {}
-local ShowInfos			= false
-local group
 
 function polar3DToWorld3D(entityPosition, radius, polarAngleDeg, azimuthAngleDeg)
 	-- convert degrees to radians
@@ -94,9 +91,9 @@ Citizen.CreateThread(function()
 		if InSpectatorMode then
 
 			local targetPlayerId = GetPlayerFromServerId(TargetSpectate)
-			local playerPed	  = GetPlayerPed(-1)
-			local targetPed	  = GetPlayerPed(targetPlayerId)
-			local coords	 = GetEntityCoords(targetPed)
+			local playerPed = GetPlayerPed(-1)
+			local targetPed = GetPlayerPed(targetPlayerId)
+			local coords    = GetEntityCoords(targetPed)
 
 			for i=0, 32, 1 do
 				if i ~= PlayerId() then
@@ -106,30 +103,30 @@ Citizen.CreateThread(function()
 			end
 
 			if IsControlPressed(0, Keys['TOP']) then
-				radius = radius + 0.5;
+				radius = radius + 0.5
 			end
 
 			if IsControlPressed(0, Keys['DOWN']) then
-				radius = radius - 0.5;
+				radius = radius - 0.5
 			end
 			
 			if radius > -1 then
 				radius = -1
 			end
 
-			local xMagnitude = GetDisabledControlNormal(0, 1);
-			local yMagnitude = GetDisabledControlNormal(0, 2);
+			local xMagnitude = GetDisabledControlNormal(0, 1)
+			local yMagnitude = GetDisabledControlNormal(0, 2)
 
-			polarAngleDeg = polarAngleDeg + xMagnitude * 10;
+			polarAngleDeg = polarAngleDeg + xMagnitude * 10
 
 			if polarAngleDeg >= 360 then
 				polarAngleDeg = 0
 			end
 
-			azimuthAngleDeg = azimuthAngleDeg + yMagnitude * 10;
+			azimuthAngleDeg = azimuthAngleDeg + yMagnitude * 10
 
 			if azimuthAngleDeg >= 360 then
-				azimuthAngleDeg = 0;
+				azimuthAngleDeg = 0
 			end
 
 			local nextCamLocation = polar3DToWorld3D(coords, radius, polarAngleDeg, azimuthAngleDeg)
